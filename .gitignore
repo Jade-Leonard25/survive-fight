@@ -1,0 +1,18 @@
+# Dependency folders
+node_modules/
+app/node_modules/
+backend/node_modules/
+
+# Environment variables (Crucial for 100k user security)
+.env
+backend/.env
+
+# Build files
+dist/
+backend/dist/
+app/build/
+app/.expo/
+
+# System files
+.DS_Store
+Thumbs.db

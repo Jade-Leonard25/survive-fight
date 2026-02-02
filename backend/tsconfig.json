@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    /* Base Options */
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ESNext"],
+    "rootDir": "./src/",
+    /* Path Mapping (Very important for scaling) */
+    "baseUrl": ".",
+    "paths": {
+      "@models/*": ["src/models/*"],
+      "@controllers/*": ["src/controllers/*"],
+      "@assets/*": ["src/assets/*"]
+    },
+
+    /* Strictness & Safety */
+    "strict": true,
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Performance */
+    "incremental": true, 
+    "outDir": "./dist"
+  },
+  "exclude": ["node_modules", "dist"]
+}
