@@ -6,7 +6,7 @@ export const MARKET_ITEMS = {
       price: 50,
       description: 'A high-tech capsule that heals minor wounds.',
       effect: { hp: 25 },
-      image: require('./nano-stim-cap.png'), // Fixed typo in filename reference
+      image: require('./nano-steam-cap.png'), // Fixed typo in filename reference
       category: 'healing',
       rarity: 'common'
     },
