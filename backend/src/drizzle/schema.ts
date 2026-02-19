@@ -1,84 +1,121 @@
-import { pgTable, text, timestamp, uniqueIndex, boolean, foreignKey, jsonb, pgEnum } from "drizzle-orm/pg-core"
+// src/db/schema.ts
+import { 
+  pgTable, text, timestamp, uniqueIndex, boolean, 
+  foreignKey, jsonb, pgEnum, integer, uuid, bigint, 
+  numeric, primaryKey 
+} from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
-export const role = pgEnum("Role", ['USER', 'ADMIN'])
+// Enums
+export const role = pgEnum("role", ['USER', 'ADMIN'])
+export const rarity = pgEnum("rarity", ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC', 'IMMORTAL'])
 
-
-export const verification = pgTable("verification", {
-	id: text().primaryKey().notNull(),
-	identifier: text().notNull(),
-	value: text().notNull(),
-	expiresAt: timestamp({ precision: 3, mode: 'string' }).notNull(),
-	createdAt: timestamp({ precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: timestamp({ precision: 3, mode: 'string' }).notNull(),
+// Users table (only permanent user data)
+export const users = pgTable("users", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`),
+  firebaseUid: text().notNull().unique(),
+  username: text().notNull().unique(),
+  email: text().notNull().unique(),
+  emailVerified: boolean().default(false).notNull(),
+  displayName: text(),
+  photoURL: text(),
+  
+  // Permanent stats (never changes during gameplay)
+  level: integer().default(1).notNull(),
+  totalExperience: bigint({ mode: 'bigint' }).default(BigInt(0)).notNull(), // Fixed: Add mode parameter
+  gold: bigint({ mode: 'bigint' }).default(BigInt(1000)).notNull(),
+  gems: integer().default(100).notNull(),
+  
+  // Lifetime statistics (updated after dungeon completion)
+  totalPlayTime: integer().default(0).notNull(), // seconds
+  totalDungeons: integer().default(0).notNull(),
+  totalBossesKilled: bigint({ mode: 'bigint' }).default(BigInt(0)).notNull(),
+  totalMobsKilled: bigint({ mode: 'bigint' }).default(BigInt(0)).notNull(),
+  highestWave: integer().default(0).notNull(),
+  highestScore: bigint({ mode: 'bigint' }).default(BigInt(0)).notNull(),
+  
+  // Account status
+  role: role().default('USER').notNull(),
+  banned: boolean().default(false),
+  banReason: text(),
+  banExpires: timestamp(),
+  
+  // Timestamps
+  lastDungeonPlayed: timestamp(),
+  lastLogin: timestamp(),
+  createdAt: timestamp().defaultNow().notNull(),
+  updatedAt: timestamp().defaultNow().notNull(),
 });
 
-export const user = pgTable("user", {
-	id: text().primaryKey().notNull(),
-	name: text().notNull(),
-	email: text().notNull(),
-	emailVerified: boolean().default(false).notNull(),
-	image: text(),
-	createdAt: timestamp({ precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: timestamp({ precision: 3, mode: 'string' }).notNull(),
-	role: role().default('USER').notNull(),
-	banned: boolean(),
-	banReason: text(),
-	banExpires: timestamp({ precision: 3, mode: 'string' }),
+// User characters owned (permanent)
+export const userCharacters = pgTable("user_characters", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
+  characterId: text().notNull(),
+  unlockedAt: timestamp().defaultNow().notNull(),
+  stars: integer().default(1).notNull(),
+  isFavorite: boolean().default(false),
 }, (table) => [
-	uniqueIndex("user_email_key").using("btree", table.email.asc().nullsLast().op("text_ops")),
+  uniqueIndex("user_characters_unique").on(table.userId, table.characterId),
 ]);
 
-export const session = pgTable("session", {
-	id: text().primaryKey().notNull(),
-	userId: text().notNull(),
-	token: text().notNull(),
-	expiresAt: timestamp({ precision: 3, mode: 'string' }).notNull(),
-	ipAddress: text(),
-	userAgent: text(),
-	createdAt: timestamp({ precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: timestamp({ precision: 3, mode: 'string' }).notNull(),
+// User inventory (permanent items)
+export const userInventory = pgTable("user_inventory", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
+  itemId: text().notNull(),
+  quantity: integer().default(1).notNull(),
+  rarity: rarity().notNull(),
+  acquiredAt: timestamp().defaultNow().notNull(),
 }, (table) => [
-	uniqueIndex("session_token_key").using("btree", table.token.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [user.id],
-			name: "session_userId_fkey"
-		}).onUpdate("cascade").onDelete("cascade"),
+  uniqueIndex("user_inventory_unique").on(table.userId, table.itemId, table.rarity),
 ]);
 
-export const account = pgTable("account", {
-	id: text().primaryKey().notNull(),
-	userId: text().notNull(),
-	accountId: text().notNull(),
-	providerId: text().notNull(),
-	accessToken: text(),
-	refreshToken: text(),
-	accessTokenExpiresAt: timestamp({ precision: 3, mode: 'string' }),
-	refreshTokenExpiresAt: timestamp({ precision: 3, mode: 'string' }),
-	scope: text(),
-	password: text(),
-	createdAt: timestamp({ precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: timestamp({ precision: 3, mode: 'string' }).notNull(),
+// Dungeon completions (record of completed dungeons)
+export const dungeonCompletions = pgTable("dungeon_completions", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
+  dungeonId: text().notNull(),
+  difficulty: text().notNull(),
+  wave: integer().notNull(),
+  score: bigint({ mode: 'bigint' }).notNull(),
+  mobsKilled: integer().notNull(),
+  bossesKilled: integer().notNull(),
+  duration: integer().notNull(),
+  rewards: jsonb().default({}).notNull(),
+  completedAt: timestamp().defaultNow().notNull(),
+});
+
+// Daily rewards claimed
+export const dailyRewards = pgTable("daily_rewards", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
+  day: integer().notNull(),
+  claimedAt: timestamp().defaultNow().notNull(),
+  rewards: jsonb().default({}).notNull(),
 }, (table) => [
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [user.id],
-			name: "account_userId_fkey"
-		}).onUpdate("cascade").onDelete("cascade"),
+  uniqueIndex("daily_rewards_unique").on(table.userId, table.day),
 ]);
 
-export const userData = pgTable("user_data", {
-	id: text().primaryKey().notNull(),
-	userId: text().notNull(),
-	data: jsonb().notNull(),
-	createdAt: timestamp({ precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: timestamp({ precision: 3, mode: 'string' }).notNull(),
+// User purchases (premium currency transactions)
+export const userPurchases = pgTable("user_purchases", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
+  productId: text().notNull(),
+  amount: numeric().notNull(),
+  currency: text().notNull(),
+  transactionId: text().unique(),
+  status: text().default('COMPLETED').notNull(),
+  purchasedAt: timestamp().defaultNow().notNull(),
+});
+
+// Friends system
+export const userFriends = pgTable("user_friends", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
+  friendId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
+  status: text().default('PENDING').notNull(),
+  createdAt: timestamp().defaultNow().notNull(),
 }, (table) => [
-	uniqueIndex("user_data_userId_key").using("btree", table.userId.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [user.id],
-			name: "user_data_userId_fkey"
-		}).onUpdate("cascade").onDelete("cascade"),
+  uniqueIndex("user_friends_unique").on(table.userId, table.friendId),
 ]);

@@ -4,8 +4,9 @@ import * as NavigationBar from 'expo-navigation-bar';
 import Slider from '@react-native-community/slider';
 import RouterButton from '../../components/routers/router';
 import { HomeContent } from '../../assets/styles';
-const { height } = Dimensions.get('window');
 
+const { height } = Dimensions.get('window');
+import { useRouter } from 'expo-router';
 export default function Home() {
   const bgImage = false; 
   const slideAnim = useRef(new Animated.Value(-height)).current;
@@ -52,9 +53,10 @@ export default function Home() {
       ]
     },
   ];
-
+  const router = useRouter()
   const handleStartGame = () => {
     Alert.alert("Game Start", "Moving to Game World...");
+    router.push('/fairy-forest')
   };
 
   const openSettings = () => {
@@ -128,7 +130,7 @@ export default function Home() {
                   key={itemIndex}
                   style={[
                     HomeContent.settingItem,
-                    (section.name === 'General' ? selectedQuality : selectedDifficulty) === item.value && styles.settingItemActive
+                    (section.name === 'General' ? selectedQuality : selectedDifficulty) === item.value && HomeContent.settingItemActive
                   ]}
                   onPress={() => {
                     if (section.name === 'General') {
@@ -182,4 +184,3 @@ export default function Home() {
     </View>
   );
 }
-

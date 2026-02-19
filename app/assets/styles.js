@@ -1,4 +1,7 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Dimensions } from "react-native";
+
+const { height, width } = Dimensions.get('window');
+
 const HomeContent = StyleSheet.create({
   container: { flex: 1 },
   backgroundImage: { flex: 1, backgroundColor: '#000' },
@@ -129,6 +132,7 @@ const HomeContent = StyleSheet.create({
     fontSize: 16,
   },
 });
+
 export {
-    HomeContent
+  HomeContent
 }
